@@ -1,4 +1,4 @@
-data<-read.csv("/Users/lkm/Desktop/IDVA/final/consumer_complaints.csv",header = TRUE)
+data<-read.csv("consumer_complaints.csv",header = TRUE)
 
 #choose sample from the data
 text<-data$Consumer.complaint.narrative[sample(1:nrow(data),50000)]
