@@ -1,5 +1,5 @@
 #load the data
-data<-read.csv(file="/Users/lkm/Desktop/IDVA/mycity/pro2/Budget_Facilities_FY2017.csv",header=TRUE)
+data<-read.csv(file="Budget_Facilities_FY2017.csv",header=TRUE)
 budget<-data[,-c(1,2)]
 a<-factor(budget$Investment_Categorization,levels=c(80,72,69,79,65,83,70))
 budget$Total_Project_Budget<-as.numeric(budget$Total_Project_Budget)
