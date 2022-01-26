@@ -1,18 +1,8 @@
----
-title: "project for Machine Learning"
-author: "Li_K"
-date: "February 28, 2017"
-output: word_document
----
-
-```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
-```
 
 ##Loading and clean the data
 ```{R for processing the data}
 #loading the data
-telemarketing<-read.csv(file = "/Users/lkm/Desktop/dm/project for machine learning/bank/bank.csv",header = TRUE,sep = ";",dec = ".")
+telemarketing<-read.csv(file = "bank.csv",header = TRUE,sep = ";",dec = ".")
 #delete the NA rows
 telemarketing<-na.omit(telemarketing)
 
