@@ -1,0 +1,127 @@
+---
+title: "PROJECT"
+author: "Li_K"
+date: "April 10, 2018"
+output: html_document
+---
+
+#read the data set
+the data set is from the USGS and link is:
+https://earthquake.usgs.gov/earthquakes/search/
+and it includes the earthquakes is larger than 7 between 1900 and 2009.
+
+#Load the dataset
+```{R for loading the data}
+earthquake_0<-read.csv("/Users/lkm/Downloads/project.csv")
+earthquake<-data.frame(table(earthquake_0$year))
+colnames(earthquake)<-c("Year","Freq")
+earthquaketrain<-earthquake[1:80,]
+earthquaketest<-c(earthquake$Freq[81:110],24,20,16,19,12,19,16,7)
+head(earthquake)
+```
+We could see that the data consists of two columns while the column1 is the year, column2 is total number of earthquakes whose magnitude is larger than 7 in that year. This dataset is a time is a time series dataset.  
+
+#plot the data
+```{R for plotting the earthquake}
+library(ggplot2)
+ggplot(data=earthquaketrain,aes(Year,Freq,group=1))+geom_line()+
+  theme(axis.text.x=element_text(angle=90,hjust=1)) +
+   ggtitle("Number of earthquakes larger than 7 during 1900-2009")
+
+```
+
+#Using SSA to build the model of this time series
+```{R for SSA decomposition}
+library(Rssa)
+decomposed<-ssa(earthquaketrain$Freq)
+plot(decomposed,type = "values")
+```
+
+
+the contribution of each eigenvalue are shown below:
+```{R for eigenvalues}
+eigenvalues<-decomposed$sigma
+#calculate the contribution
+ratio<-vector(length = length(eigenvalues))
+for(i in 1:length(ratio)){
+  ratio[i]<-eigenvalues[i]/sum(eigenvalues)
+}
+ratio
+```
+
+
+#compare the original time series and reconstructed time series
+```{R for SSA reconstruction}
+SSAconstruct<-reconstruct(decomposed,groups=list(one=1,two=2,three=3,four=4 ,five=5,six=6,seven=7,eight=8,nine=9,ten=10))
+plot(SSAconstruct, plot.method = "xyplot", add.residuals = FALSE,superpose = TRUE, auto.key = list(columns = 2))
+```
+we could see that the original time series has been decomposed into many components and the first component implies the most trend while others gives little signals.
+
+#do the predition for following years with the time series
+```{R for prediction}
+year<-seq(1900,2017,1)
+old<-c(earthquaketrain$Freq,earthquaketest)
+a<-vector(length = 39)
+i<-1
+while(i<=39){
+  new<-rforecast(decomposed,groups = list(Trend=c(1:i)),len = 38,only.new = FALSE)
+  new<-round(new)
+  k<-accuracy(old,new)
+  a[i]<-k[2]
+  i<-i+1
+}
+m<-which(a==min(a))
+new<-round(rforecast(decomposed,groups = list(Trend=c(1:m)),len = 38,only.new = FALSE))
+comparason<-data.frame(cbind(cbind(year,old),new))
+
+ggplot(data = comparason,aes(x=year))+geom_line(aes(y=old,colour="old"))+
+  geom_line(aes(y=new,colour="new"))
+```
+
+```{R for ealuating}
+#calculate the accuracy for the new following years
+accuracy(old[81:118],new[81:118])
+```
+
+#use arima to fit the data and compare it with SSA
+```{R for arima}
+data<-ts(earthquaketrain$Freq,start = 1900,frequency = 1)
+plot(data)
+```
+
+
+```{R for Difference data to make data stationary on mean (remove trend)}
+library(forecast)
+library(tseries)
+ndiffs(data)
+adf.test(diff(data), alternative = "stationary")
+```
+```{R for plot the time series after differencing}
+plot(diff(data),ylab='Differenced Tractor Sales')
+```
+
+The above shows if we use one as the number of the difference, then the new time series is like a stationary on variance, we could also see it from the plot i.e. mean and variation in the plot is similar as we move towards the right of the chart. 
+
+```{R for Plot ACF and PACF to identify potential AR and MA model}
+par(mfrow = c(1,2))
+acf(ts(diff(data)),main='ACF Tractor Sales')
+pacf(ts(diff(data)),main='PACF Tractor Sales')
+```
+
+#fit the arima model with the dataset
+```{R for auto arima}
+fit<-auto.arima(data,d=1,stationary=TRUE)
+fit
+```
+
+#use the arima model to do the prediction and compare with SSA
+```{R for prediction with arima}
+fcast<-forecast(fit,h=38)
+original<-earthquaketest
+SSApred<-new[81:118]
+arimapred<-round(fcast$mean[1:38])
+cbind(original,SSApred,arimapred)
+accuracy(original,SSApred)
+accuracy(original,arimapred)
+```
+
