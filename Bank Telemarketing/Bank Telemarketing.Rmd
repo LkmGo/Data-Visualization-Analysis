@@ -1,0 +1,189 @@
+---
+title: "project for Machine Learning"
+author: "Li_K"
+date: "February 28, 2017"
+output: word_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+##Loading and clean the data
+```{R for processing the data}
+#loading the data
+telemarketing<-read.csv(file = "/Users/lkm/Desktop/dm/project for machine learning/bank/bank.csv",header = TRUE,sep = ";",dec = ".")
+#delete the NA rows
+telemarketing<-na.omit(telemarketing)
+
+#see the basic information of data.
+str(telemarketing)
+summary(telemarketing)
+
+#change the represent value of y variable
+telemarketing$y<-factor(x=telemarketing$y,levels = c("no","yes"),lables<-c("0","1"))
+```
+
+as there are total 21 variables in the dataset. Among all of them, only age, dration, compaign, pdays, previous, emp.var.rate, cons.price.idx, euribor3m, and nr.employed are numerical, and other vatiables are categorical. Let's try to find whether exists any correlation among them.
+```{R for correlation}
+cor(telemarketing[,c(1,11,12,13,14,16,17,18,19,20)])
+```
+
+as we all know that the variables are too much for the analysis, we need to do dimension reduction first. Here we use PCA.
+```{R for PCA-find nfactors}
+library(psych)
+fa.parallel(telemarketing[,c(1,11,12,13,14,16,17,18,19,20)],fa="pc",n.iter = 100,show.legend = FALSE,main = "scree plot with parallel analysis")
+```
+From this graph, we could see that the number of components should be set is about 4, so let's do get the principal component from below:
+```{R for PCA-creat the components}
+#create the pricipal components with nfactors=4
+pc<-principal(telemarketing[,c(1,11,12,13,14,16,17,18,19,20)],nfactors = 4,scores = TRUE)
+#get the value of the pca as four new variables instead of original 10 variables.
+a<-pc$scores
+
+teledata<-cbind(telemarketing[,-c(1,11,12,13,14,16,17,18,19,20,21)],a,telemarketing$y)
+names(teledata)[names(teledata) == 'telemarketing$y'] <- 'y'
+
+```
+
+after the dimension reduction, then we have total 15 varibles, much less than before. then there are 4 continous variables and 11 categorical variables. Here, y is set as response, while other 14 variables are predictors. in next step, there are four methods(LR,KNN,CT,NB) will be used to build the models which can predict y. Here are the detail about these four methods......
+
+#separate the data into training and test dataset
+```{R for training and testing data}
+set.seed(1234)
+ind<-sample(1:nrow(teledata),0.7*nrow(teledata))
+training<-teledata[ind,]
+test<-teledata[-ind,]
+```
+
+
+#LR for the prediction
+```{R for LR}
+#build the LR model using newdata
+lrmodel<-glm(y~.,data =training, family = "binomial" )
+summary(lrmodel)
+
+#test the lrmodel
+lrpredict<-predict(lrmodel,newdata=test,type="response")
+lrclass<-vector(length = nrow(test))
+for(i in 1:nrow(test)){
+  if(lrpredict[i]>0.5){
+    lrclass[i]<-1
+  }else{
+    lrclass[i]<-0
+  }
+}
+
+#test the output results
+lrcm<-table(test$y,lrclass)
+lrcm
+
+#calculate the miclassification rate
+lrmr<-(lrcm[1,2]+lrcm[2,1])/sum(lrcm)
+lrmr
+```
+
+
+
+#CT for prediction
+for this part, I would use classification tree to do analysis
+```{R for CT}
+library(party)
+#build the classification model with training data
+ctmodel<-ctree(y~.,data = training)
+
+#get the predicted class of y
+ctclass<-predict(ctmodel,test[,-15],type="response")
+
+#build the misclassification table
+ctcm<-table(test$y,ctclass)
+ctcm
+
+##calculate the miclassification rate
+ctmr<-(ctcm[1,2]+ctcm[2,1])/sum(ctcm)
+ctmr
+```
+this number is just a bit higher than logistic regression model
+
+
+#NB for prediction
+for this part, I would use Naive Bayes to do analysis
+```{R for naive bayes}
+#build the model with naive bayes
+library(e1071)
+nbmodel<-naiveBayes(y~.,data=training)
+nbclass<-predict(nbmodel,test[,-15])
+
+#build the misclassification table
+nbcm<-table(test$y,nbclass)
+nbcm
+
+##calculate the miclassification rate
+nbmr<-(nbcm[1,2]+nbcm[2,1])/sum(nbcm)
+nbmr
+```
+
+
+```{R for KNN}
+#select suitable K for building tha model
+# library(kknn)
+# library(class)
+# library(Rlab)
+# 
+# #transfer the categorical variable into dummy varables
+# job<-model.matrix(~job-1,telemarketing)
+# marital<-model.matrix(~marital-1,telemarketing)
+# education<-model.matrix(~education-1,telemarketing)
+# default<-model.matrix(~default-1,telemarketing)
+# housing<-model.matrix(~housing-1,telemarketing)
+# loan<-model.matrix(~loan-1,telemarketing)
+# month<-model.matrix(~month-1,telemarketing)
+# day_of_week<-model.matrix(~day_of_week-1,telemarketing)
+# poutcome<-model.matrix(~poutcome-1,telemarketing)
+# contact<-model.matrix(~contact-1,telemarketing)
+# knndata<-cbind(job,marital,education,default,housing,loan,contact,month,day_of_week,poutcome,contact,teledata[,c(11,12,13,14,15)])
+# 
+# #also divide the data into training and test data
+# training2<-knndata[ind,]
+# test2<-knndata[-ind,]
+# 
+# 
+# 
+# #choose the best k which minimize the classification rate
+# a<-seq(from=1,to=100,by=2)
+# accuracy<-vector(length = 50)
+# sensitivity<-vector(length = 50)
+# for (i in 1:50) {
+#   pred.knn<-knn(train = training2[,-60],test = test2[,-60],cl=training2$y,k=a[i])
+#   accuracy[i]<-count(pred.knn==test2$y)/length(test2$y)
+#   sensitivity[i]<-count(pred.knn==test2$y&test2$y==1)/count(test2$y==1)
+# }
+# K<-a
+# best_K_table<-cbind(K,accuracy)
+# best_K_table<-cbind(best_K_table,sensitivity)
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
