@@ -1,10 +1,3 @@
----
-title: "PROJECT"
-author: "Li_K"
-date: "April 10, 2018"
-output: html_document
----
-
 #read the data set
 the data set is from the USGS and link is:
 https://earthquake.usgs.gov/earthquakes/search/
@@ -12,7 +5,7 @@ and it includes the earthquakes is larger than 7 between 1900 and 2009.
 
 #Load the dataset
 ```{R for loading the data}
-earthquake_0<-read.csv("/Users/lkm/Downloads/project.csv")
+earthquake_0<-read.csv("Earthquake Analysis.csv")
 earthquake<-data.frame(table(earthquake_0$year))
 colnames(earthquake)<-c("Year","Freq")
 earthquaketrain<-earthquake[1:80,]
